@@ -94,6 +94,12 @@ def craft_adversarial(forward_fn, loader, attack, device, **attack_kwargs):
         x_adv = attack(forward_fn, images, targets, **attack_kwargs)
         adv_images.append(x_adv.detach().cpu())
         labels.append(targets.cpu())
+        # Explicit cleanup after each batch: the GPU-resident images/targets/
+        # x_adv aren't needed once copied to CPU, and PGD/EOT steps can leave
+        # sizeable intermediate tensors (reconstructions, gradients) around.
+        del images, targets, x_adv
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
     return torch.cat(adv_images), torch.cat(labels)
 
 
