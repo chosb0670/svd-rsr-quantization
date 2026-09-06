@@ -39,14 +39,19 @@ from quantization import quantize_by_component_count, design_group_probabilities
 
 
 def calibrate_group_probabilities(data_root: str, K: int, floor: float,
-                                   num_calib: int, device: torch.device):
+                                   num_calib: int, device: torch.device, seed: int = 42):
     """Estimates each group's average energy share on a sample of TRAINING
     images (kept separate from the test set used for the final accuracy
     comparison), then floors it into an inclusion probability p_b'."""
     calib_set = torchvision.datasets.CIFAR10(
         root=data_root, train=True, download=True, transform=transforms.ToTensor()
     )
-    loader = torch.utils.data.DataLoader(calib_set, batch_size=num_calib, shuffle=True)
+    # Seeded so the same training images are sampled across a --floor sweep,
+    # isolating the effect of `floor` from calibration-sample variance.
+    calib_generator = torch.Generator().manual_seed(seed)
+    loader = torch.utils.data.DataLoader(
+        calib_set, batch_size=num_calib, shuffle=True, generator=calib_generator
+    )
     images, _ = next(iter(loader))
     images = images.to(device)
 
@@ -93,13 +98,18 @@ def reconstruct_with_group_mask(U, S, Vh, buckets, group_mask):
 @torch.no_grad()
 def evaluate_proposed(model, loader, device, R: int, buckets: torch.Tensor,
                        p_b_floored: torch.Tensor, seed: int):
+    """Returns (accuracy, avg_keep_ratio) - avg_keep_ratio is the mean
+    fraction of singular-value components actually used across every
+    image/channel/trial's reconstruction (comparable to RSR's keep_ratio)."""
     model.eval()
     mean, std = CIFAR_MEAN.to(device), CIFAR_STD.to(device)
     generator = torch.Generator().manual_seed(seed)
     buckets = buckets.to(device)
     p_b_floored_cpu = p_b_floored.cpu()
+    k = buckets.numel()
 
     correct, total = 0, 0
+    keep_ratio_sum, keep_ratio_count = 0.0, 0
     for images, targets in loader:
         images, targets = images.to(device), targets.to(device)
         n, c = images.size(0), images.size(1)
@@ -109,6 +119,9 @@ def evaluate_proposed(model, loader, device, R: int, buckets: torch.Tensor,
         recons = []
         for _ in range(R):
             mask = sample_group_mask(p_b_floored_cpu, n, c, generator).to(device)
+            component_mask = mask[..., buckets]  # (n, c, k)
+            keep_ratio_sum += component_mask.float().sum().item()
+            keep_ratio_count += component_mask.numel()
             recons.append(reconstruct_with_group_mask(U, S, Vh, buckets, mask))
         recons = torch.stack(recons, dim=0)  # (R, N, C, H, W)
 
@@ -121,7 +134,9 @@ def evaluate_proposed(model, loader, device, R: int, buckets: torch.Tensor,
         correct += (majority_vote == targets).sum().item()
         total += n
 
-    return 100.0 * correct / total
+    accuracy = 100.0 * correct / total
+    avg_keep_ratio = keep_ratio_sum / keep_ratio_count
+    return accuracy, avg_keep_ratio
 
 
 def main():
@@ -150,7 +165,7 @@ def main():
     print(f"Loaded checkpoint: {args.checkpoint}")
 
     buckets, p_b, p_b_floored = calibrate_group_probabilities(
-        args.data_root, args.K, args.floor, args.num_calib, device
+        args.data_root, args.K, args.floor, args.num_calib, device, args.seed
     )
     print(f"\nCalibrated on {args.num_calib} training images "
           f"(group sizes={[int((buckets == b).sum()) for b in range(args.K)]}):")
@@ -169,15 +184,18 @@ def main():
           f"keep_ratio={args.rsr_keep_ratio}) accuracy: {rsr_acc:.2f}% ({time.time() - start:.1f}s)")
 
     start = time.time()
-    proposed_acc = evaluate_proposed(model, test_loader, device, args.R, buckets, p_b_floored, args.seed)
+    proposed_acc, avg_keep_ratio = evaluate_proposed(
+        model, test_loader, device, args.R, buckets, p_b_floored, args.seed
+    )
     print(f"Proposed (quantized groups + Bernoulli(p_b'), R={args.R}, K={args.K}) "
-          f"accuracy: {proposed_acc:.2f}% ({time.time() - start:.1f}s)")
+          f"accuracy: {proposed_acc:.2f}%, avg keep_ratio={avg_keep_ratio:.4f} "
+          f"({time.time() - start:.1f}s)")
 
     print("\n=== Clean accuracy comparison ===")
     print(f"{'Method':<45}{'Accuracy':>10}")
     print(f"{'Baseline (undefended)':<45}{plain_acc:>9.2f}%")
-    print(f"{'Original RSR':<45}{rsr_acc:>9.2f}%")
-    print(f"{'Proposed (quantized groups)':<45}{proposed_acc:>9.2f}%")
+    print(f"{'Original RSR (keep_ratio={:.2f})'.format(args.rsr_keep_ratio):<45}{rsr_acc:>9.2f}%")
+    print(f"{'Proposed (avg keep_ratio={:.4f})'.format(avg_keep_ratio):<45}{proposed_acc:>9.2f}%")
     print(f"\nProposed vs baseline: {proposed_acc - plain_acc:+.2f}pp")
     print(f"Proposed vs original RSR: {proposed_acc - rsr_acc:+.2f}pp")
 
