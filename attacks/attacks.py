@@ -35,28 +35,32 @@ def bpda_apply(x: torch.Tensor, fn) -> torch.Tensor:
     return BPDAIdentity.apply(x, fn)
 
 
-def fgsm_attack(forward_fn, x: torch.Tensor, y: torch.Tensor, eps: float) -> torch.Tensor:
+def fgsm_attack(forward_fn, x: torch.Tensor, y: torch.Tensor, eps: float,
+                 loss_fn=F.cross_entropy) -> torch.Tensor:
     """x' = x + eps * sign(grad_x L(x, y)). x: raw pixel images in [0, 1].
-    forward_fn(x) -> logits (may internally use BPDA for non-differentiable
-    preprocessing)."""
+    forward_fn(x) -> whatever `loss_fn` expects (raw logits by default; may
+    internally use BPDA for non-differentiable preprocessing). Pass
+    loss_fn=F.nll_loss with a forward_fn returning log-probabilities for a
+    model whose output is already a normalized distribution (e.g. a
+    probability-weighted mixture) rather than raw logits."""
     x = x.clone().detach().requires_grad_(True)
-    logits = forward_fn(x)
-    loss = F.cross_entropy(logits, y)
+    output = forward_fn(x)
+    loss = loss_fn(output, y)
     grad = torch.autograd.grad(loss, x)[0]
     x_adv = x.detach() + eps * grad.sign()
     return x_adv.clamp(0.0, 1.0)
 
 
 def pgd_attack(forward_fn, x: torch.Tensor, y: torch.Tensor, eps: float,
-               alpha: float, steps: int) -> torch.Tensor:
+               alpha: float, steps: int, loss_fn=F.cross_entropy) -> torch.Tensor:
     """Iterative FGSM with per-step projection back into the eps-ball around
     the original image (L-infinity) and into the valid [0, 1] pixel range."""
     x_orig = x.clone().detach()
     x_adv = x_orig.clone()
     for _ in range(steps):
         x_adv = x_adv.clone().detach().requires_grad_(True)
-        logits = forward_fn(x_adv)
-        loss = F.cross_entropy(logits, y)
+        output = forward_fn(x_adv)
+        loss = loss_fn(output, y)
         grad = torch.autograd.grad(loss, x_adv)[0]
         x_adv = x_adv.detach() + alpha * grad.sign()
         x_adv = torch.max(torch.min(x_adv, x_orig + eps), x_orig - eps)
