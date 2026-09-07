@@ -1,0 +1,38 @@
+{
+  "0.005": {
+    "any_unclamped_fraction": 0.40700000524520874,
+    "per_group_unclamped_fraction": [
+      0.40700000524520874,
+      0.003000000026077032,
+      0.0,
+      0.0
+    ]
+  },
+  "0.01": {
+    "any_unclamped_fraction": 0.11400000005960464,
+    "per_group_unclamped_fraction": [
+      0.11400000005960464,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "0.02": {
+    "any_unclamped_fraction": 0.01600000075995922,
+    "per_group_unclamped_fraction": [
+      0.01600000075995922,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "0.03": {
+    "any_unclamped_fraction": 0.003000000026077032,
+    "per_group_unclamped_fraction": [
+      0.003000000026077032,
+      0.0,
+      0.0,
+      0.0
+    ]
+  }
+}

@@ -95,6 +95,45 @@ def reconstruct_with_group_mask(U, S, Vh, buckets, group_mask):
     return recon.clamp(0.0, 1.0)
 
 
+def compute_adaptive_group_probs(S: torch.Tensor, buckets: torch.Tensor, floor: float):
+    """Per-image, per-channel adaptive group inclusion probabilities.
+
+    Unlike calibrate_group_probabilities (one p_b' vector pre-computed once
+    from an average over 500 TRAINING images and then reused unchanged for
+    every test image), this computes each image's OWN group energy shares
+    from its OWN singular values at inference time - restoring the property
+    original RSR has (magnitude-proportional sampling from that image's
+    actual spectrum) that the fixed-calibration version discarded.
+
+    S: (n, c, k) singular values for the batch being classified right now.
+    buckets: (k,) group id per singular-value index - the grouping itself is
+    still the fixed, image-independent K-way split; only the probabilities
+    are adaptive. Returns (p_b, p_b_floored), each (n, c, K)."""
+    n, c, k = S.shape
+    K = int(buckets.max().item()) + 1
+    energy = S ** 2
+    total = energy.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+    ratios = energy / total  # (n, c, k)
+
+    p_b = torch.zeros(n, c, K, device=S.device, dtype=S.dtype)
+    for b in range(K):
+        p_b[..., b] = ratios[..., buckets == b].sum(dim=-1)
+    p_b_floored = torch.clamp(p_b, min=floor)
+    return p_b, p_b_floored
+
+
+def sample_group_mask_from_probs(probs: torch.Tensor, generator: torch.Generator):
+    """Same independent-Bernoulli + force-include-fallback logic as
+    sample_group_mask, but for probs that already vary per image/channel
+    (shape (n, c, K)) instead of a single shared (K,) vector broadcast over
+    the batch."""
+    mask = torch.bernoulli(probs, generator=generator).bool()
+    empty = ~mask.any(dim=-1, keepdim=True)  # (n, c, 1)
+    fallback_idx = probs.argmax(dim=-1, keepdim=True)  # (n, c, 1)
+    force = torch.zeros_like(mask).scatter_(-1, fallback_idx, True)
+    return mask | (force & empty)
+
+
 @torch.no_grad()
 def evaluate_proposed(model, loader, device, R: int, buckets: torch.Tensor,
                        p_b_floored: torch.Tensor, seed: int):
@@ -139,6 +178,51 @@ def evaluate_proposed(model, loader, device, R: int, buckets: torch.Tensor,
     return accuracy, avg_keep_ratio
 
 
+@torch.no_grad()
+def evaluate_proposed_adaptive(model, loader, device, R: int, buckets: torch.Tensor,
+                                floor: float, seed: int):
+    """Same R=10 majority-vote pipeline as evaluate_proposed, but p_b' is
+    recomputed per image/channel from that image's own SVD spectrum
+    (compute_adaptive_group_probs) instead of reused from a fixed,
+    training-set-calibrated vector. Returns (accuracy, avg_keep_ratio)."""
+    model.eval()
+    mean, std = CIFAR_MEAN.to(device), CIFAR_STD.to(device)
+    generator = torch.Generator().manual_seed(seed)
+    buckets = buckets.to(device)
+
+    correct, total = 0, 0
+    keep_ratio_sum, keep_ratio_count = 0.0, 0
+    for images, targets in loader:
+        images, targets = images.to(device), targets.to(device)
+        n, c = images.size(0), images.size(1)
+
+        U, S, Vh = svd_decompose(images)
+        _, p_b_floored = compute_adaptive_group_probs(S, buckets, floor)
+        p_b_floored_cpu = p_b_floored.cpu()
+
+        recons = []
+        for _ in range(R):
+            mask = sample_group_mask_from_probs(p_b_floored_cpu, generator).to(device)
+            component_mask = mask[..., buckets]
+            keep_ratio_sum += component_mask.float().sum().item()
+            keep_ratio_count += component_mask.numel()
+            recons.append(reconstruct_with_group_mask(U, S, Vh, buckets, mask))
+        recons = torch.stack(recons, dim=0)
+
+        batched = recons.reshape(R * n, *images.shape[1:])
+        normalized = (batched - mean) / std
+        logits = model(normalized)
+        preds = logits.argmax(dim=1).reshape(R, n)
+
+        majority_vote = torch.mode(preds, dim=0).values
+        correct += (majority_vote == targets).sum().item()
+        total += n
+
+    accuracy = 100.0 * correct / total
+    avg_keep_ratio = keep_ratio_sum / keep_ratio_count
+    return accuracy, avg_keep_ratio
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Evaluate the proposed quantization+group-probability defense (clean accuracy)."
@@ -151,6 +235,9 @@ def main():
                          help="Number of training images used to estimate group energy shares.")
     parser.add_argument("--rsr-keep-ratio", type=float, default=0.5,
                          help="keep_ratio used for the original RSR comparison run.")
+    parser.add_argument("--adaptive-probs", action="store_true",
+                         help="Compute p_b' per image from its own SVD spectrum at inference "
+                              "time instead of reusing a fixed, training-set-calibrated vector.")
     parser.add_argument("--batch-size", type=int, default=128)
     parser.add_argument("--num-workers", type=int, default=2)
     parser.add_argument("--data-root", type=str, default="./data")
@@ -184,12 +271,20 @@ def main():
           f"keep_ratio={args.rsr_keep_ratio}) accuracy: {rsr_acc:.2f}% ({time.time() - start:.1f}s)")
 
     start = time.time()
-    proposed_acc, avg_keep_ratio = evaluate_proposed(
-        model, test_loader, device, args.R, buckets, p_b_floored, args.seed
-    )
-    print(f"Proposed (quantized groups + Bernoulli(p_b'), R={args.R}, K={args.K}) "
-          f"accuracy: {proposed_acc:.2f}%, avg keep_ratio={avg_keep_ratio:.4f} "
-          f"({time.time() - start:.1f}s)")
+    if args.adaptive_probs:
+        proposed_acc, avg_keep_ratio = evaluate_proposed_adaptive(
+            model, test_loader, device, args.R, buckets, args.floor, args.seed
+        )
+        print(f"Proposed - ADAPTIVE (per-image p_b' from own SVD spectrum, R={args.R}, K={args.K}) "
+              f"accuracy: {proposed_acc:.2f}%, avg keep_ratio={avg_keep_ratio:.4f} "
+              f"({time.time() - start:.1f}s)")
+    else:
+        proposed_acc, avg_keep_ratio = evaluate_proposed(
+            model, test_loader, device, args.R, buckets, p_b_floored, args.seed
+        )
+        print(f"Proposed - FIXED (quantized groups + Bernoulli(p_b'), R={args.R}, K={args.K}) "
+              f"accuracy: {proposed_acc:.2f}%, avg keep_ratio={avg_keep_ratio:.4f} "
+              f"({time.time() - start:.1f}s)")
 
     print("\n=== Clean accuracy comparison ===")
     print(f"{'Method':<45}{'Accuracy':>10}")

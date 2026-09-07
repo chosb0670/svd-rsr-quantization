@@ -1,0 +1,46 @@
+Using device: cuda
+Sampling 1000 random test images (seed=42)...
+Calibrating FIXED proposed defense (K=5, floor=0.36) on 500 training images...
+  fixed p_b_prime = [0.9943, 0.36, 0.36, 0.36, 0.36]
+
+=== Clean accuracy (1000 images) ===
+  Fixed:    89.10%  (avg keep_ratio=0.4994) (2.6s)
+  Adaptive: 89.20%  (avg keep_ratio=0.4993) (2.3s)
+
+--- Crafting adversarial examples at eps=0.0157 ---
+[1/4] Fixed, FGSM (BPDA)...
+[2/4] Fixed, PGD-EOT...
+[3/4] Adaptive, FGSM (BPDA)...
+[4/4] Adaptive, PGD-EOT...
+
+--- Evaluating robust accuracy (real R=10 majority-vote pipelines) ---
+
+=== Summary (num_samples=1000, eps=0.0157, eot_samples=10) ===
+Method                   Clean      FGSM   PGD-EOT
+Fixed                   89.10%    31.80%     2.80%
+Adaptive                89.20%    31.90%     2.50%
+
+--- Per-image correctness for McNemar's test (paired, same 1000 images) ---
+
+  Sanity check (should match aggregate accuracies above):
+    Fixed:    clean=89.10%  FGSM=31.80%  PGD=2.80%
+    Adaptive: clean=89.20%  FGSM=31.90%  PGD=2.50%
+
+=== McNemar's test: Adaptive vs Fixed (paired, same images) ===
+
+Clean:
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=1, Fixed-only-correct=0 (n_discordant=1)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+
+FGSM:
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=2, Fixed-only-correct=1 (n_discordant=3)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+
+PGD-EOT:
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=3 (n_discordant=3)
+    McNemar (exact binomial): statistic=n/a, p=0.25, NOT significant (p>=0.05)
+
+GPU memory at end: 152.6MB allocated, 1196.7MB peak

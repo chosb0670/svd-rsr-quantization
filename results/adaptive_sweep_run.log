@@ -1,0 +1,136 @@
+Using device: cuda
+Sampling 1000 random test images (seed=42)...
+
+==================== floor=0.05 ====================
+  fixed p_b_prime = [0.9943, 0.05, 0.05, 0.05, 0.05]
+  Sanity stats (channel-avg raw p_b before flooring, floor=0.05):
+    B0: below-floor(clamped) fraction=  0.0%  min=96.207%  max=99.997%  mean=99.398%
+    B1: below-floor(clamped) fraction=100.0%  min= 0.003%  max= 3.294%  mean= 0.527%
+    B2: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.583%  mean= 0.065%
+    B3: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.087%  mean= 0.010%
+    B4: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.008%  mean= 0.001%
+  Clean: fixed=80.80%  adaptive=80.70%
+  [1/4] Fixed FGSM (BPDA)...
+  [2/4] Fixed PGD-EOT...
+  [3/4] Adaptive FGSM (BPDA)...
+  [4/4] Adaptive PGD-EOT...
+  FGSM: fixed=21.50%  adaptive=21.50%
+  PGD-EOT: fixed=2.40%  adaptive=2.40%
+  McNemar (Adaptive vs Fixed):
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=1 (n_discordant=1)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=0 (n_discordant=0)
+    McNemar (degenerate (no discordant pairs)): statistic=0.000, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=1, Fixed-only-correct=1 (n_discordant=2)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  floor=0.05 done in 342.2s
+  saved to ./results/adaptive_sweep/summary.json
+
+==================== floor=0.1 ====================
+  fixed p_b_prime = [0.9943, 0.1, 0.1, 0.1, 0.1]
+  Sanity stats (channel-avg raw p_b before flooring, floor=0.1):
+    B0: below-floor(clamped) fraction=  0.0%  min=96.207%  max=99.997%  mean=99.398%
+    B1: below-floor(clamped) fraction=100.0%  min= 0.003%  max= 3.294%  mean= 0.527%
+    B2: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.583%  mean= 0.065%
+    B3: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.087%  mean= 0.010%
+    B4: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.008%  mean= 0.001%
+  Clean: fixed=81.40%  adaptive=81.40%
+  [1/4] Fixed FGSM (BPDA)...
+  [2/4] Fixed PGD-EOT...
+  [3/4] Adaptive FGSM (BPDA)...
+  [4/4] Adaptive PGD-EOT...
+  FGSM: fixed=23.20%  adaptive=23.20%
+  PGD-EOT: fixed=2.70%  adaptive=2.50%
+  McNemar (Adaptive vs Fixed):
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=0 (n_discordant=0)
+    McNemar (degenerate (no discordant pairs)): statistic=0.000, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=1, Fixed-only-correct=1 (n_discordant=2)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=2 (n_discordant=2)
+    McNemar (exact binomial): statistic=n/a, p=0.5, NOT significant (p>=0.05)
+  floor=0.1 done in 578.0s
+  saved to ./results/adaptive_sweep/summary.json
+
+==================== floor=0.15 ====================
+  fixed p_b_prime = [0.9943, 0.15, 0.15, 0.15, 0.15]
+  Sanity stats (channel-avg raw p_b before flooring, floor=0.15):
+    B0: below-floor(clamped) fraction=  0.0%  min=96.207%  max=99.997%  mean=99.398%
+    B1: below-floor(clamped) fraction=100.0%  min= 0.003%  max= 3.294%  mean= 0.527%
+    B2: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.583%  mean= 0.065%
+    B3: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.087%  mean= 0.010%
+    B4: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.008%  mean= 0.001%
+  Clean: fixed=82.90%  adaptive=82.90%
+  [1/4] Fixed FGSM (BPDA)...
+  [2/4] Fixed PGD-EOT...
+  [3/4] Adaptive FGSM (BPDA)...
+  [4/4] Adaptive PGD-EOT...
+  FGSM: fixed=24.80%  adaptive=24.90%
+  PGD-EOT: fixed=2.90%  adaptive=2.90%
+  McNemar (Adaptive vs Fixed):
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=0 (n_discordant=0)
+    McNemar (degenerate (no discordant pairs)): statistic=0.000, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=2, Fixed-only-correct=1 (n_discordant=3)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=1, Fixed-only-correct=1 (n_discordant=2)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  floor=0.15 done in 632.2s
+  saved to ./results/adaptive_sweep/summary.json
+
+==================== floor=0.2 ====================
+  fixed p_b_prime = [0.9943, 0.2, 0.2, 0.2, 0.2]
+  Sanity stats (channel-avg raw p_b before flooring, floor=0.2):
+    B0: below-floor(clamped) fraction=  0.0%  min=96.207%  max=99.997%  mean=99.398%
+    B1: below-floor(clamped) fraction=100.0%  min= 0.003%  max= 3.294%  mean= 0.527%
+    B2: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.583%  mean= 0.065%
+    B3: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.087%  mean= 0.010%
+    B4: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.008%  mean= 0.001%
+  Clean: fixed=84.40%  adaptive=84.40%
+  [1/4] Fixed FGSM (BPDA)...
+  [2/4] Fixed PGD-EOT...
+  [3/4] Adaptive FGSM (BPDA)...
+  [4/4] Adaptive PGD-EOT...
+  FGSM: fixed=27.80%  adaptive=28.00%
+  PGD-EOT: fixed=2.60%  adaptive=2.50%
+  McNemar (Adaptive vs Fixed):
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=0 (n_discordant=0)
+    McNemar (degenerate (no discordant pairs)): statistic=0.000, p=1, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=3, Fixed-only-correct=1 (n_discordant=4)
+    McNemar (exact binomial): statistic=n/a, p=0.625, NOT significant (p>=0.05)
+  Adaptive vs Fixed:
+    discordant pairs: Adaptive-only-correct=0, Fixed-only-correct=1 (n_discordant=1)
+    McNemar (exact binomial): statistic=n/a, p=1, NOT significant (p>=0.05)
+  floor=0.2 done in 627.7s
+  saved to ./results/adaptive_sweep/summary.json
+
+==================== floor=0.36 ====================
+  fixed p_b_prime = [0.9943, 0.36, 0.36, 0.36, 0.36]
+  Sanity stats (channel-avg raw p_b before flooring, floor=0.36):
+    B0: below-floor(clamped) fraction=  0.0%  min=96.207%  max=99.997%  mean=99.398%
+    B1: below-floor(clamped) fraction=100.0%  min= 0.003%  max= 3.294%  mean= 0.527%
+    B2: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.583%  mean= 0.065%
+    B3: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.087%  mean= 0.010%
+    B4: below-floor(clamped) fraction=100.0%  min= 0.000%  max= 0.008%  mean= 0.001%
+  (reusing cached clean/FGSM/PGD-EOT/McNemar results from the earlier floor=0.36 run)
+  floor=0.36 done in 1.2s
+  saved to ./results/adaptive_sweep/summary.json
+
+
+======================================================================
+=== Floor sweep summary ===
+floor   fixed C/F/P         adapt C/F/P         McNemar p (C/F/P)       
+0.05    80.8/21.5/2.4       80.7/21.5/2.4       1.000/1.000/1.000       
+0.10    81.4/23.2/2.7       81.4/23.2/2.5       1.000/1.000/0.500       
+0.15    82.9/24.8/2.9       82.9/24.9/2.9       1.000/1.000/1.000       
+0.20    84.4/27.8/2.6       84.4/28.0/2.5       1.000/0.625/1.000       
+0.36    89.1/31.8/2.8       89.2/31.9/2.5       1.000/1.000/0.250       
